@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<launch>
+    <param name="use_sim_time" value="true" />
+
+    <!-- Pose path publisher. Used for visualization. -->
+    <node pkg="ros_utils" type="pose_to_path" name="refined_gps">
+        <remap from="pose" to="/gps_aligned/pose" />
+        <remap from="path" to="/gps_aligned/path" />
+    </node>
+
+    <!--<node pkg="ros_utils" type="pose_to_path" name="gps_path">-->
+        <!--<remap from="pose" to="/gps_pose" />-->
+        <!--<remap from="path" to="/gps_aligned/path" />-->
+    <!--</node>-->
+
+    <node pkg="gps_call" type="gps_conversion_node" name="gps_conversion" output="screen">
+        <!-- <remap from="/wide/image_raw" to="/wide/image_raw"/> -->
+        <!-- <remap from="/imu/data" to="/imu/data_raw"/> -->
+        <param name="gps_sub_topic" value="/gps_pose" />
+        <param name="parent_frame" value="/world" />
+        <param name="child_frame" value="/refined_gps" />
+        <param name="pub_topic" value="/gps_aligned/pose" />
+        <param name="align_positive" value="true" />
+    </node>
+
+    <node pkg="rviz" type="rviz" name="rviz" args="-d $(find gps_call)/test_path.rviz" output="log" />
+
+</launch>

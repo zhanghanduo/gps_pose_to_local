@@ -4,7 +4,8 @@
 external_info::gps_conversion::gps_conversion(ros::NodeHandle& nh_pub, ros::NodeHandle& nh_private)
 {
     // Load launch file parameters
-    nh_private.param<std::string>("gps_sub", gps_sub_topic, "/gps/pose");
+    nh_private.param<std::string>("gps_sub_topic", gps_sub_topic, "/gps/pose");
+    nh_private.param<std::string>("pub_topic", pose_pub_topic, "/gps_aligned/pose");
     nh_private.param<std::string>("parent_frame", parent_frame, "world");
     nh_private.param<std::string>("child_frame", child_frame, "refined_gps");
     nh_private.param<bool>("align_positive", align_pose_, true);
@@ -12,9 +13,11 @@ external_info::gps_conversion::gps_conversion(ros::NodeHandle& nh_pub, ros::Node
     gps_sub_ = nh_pub.subscribe(gps_sub_topic, 1000, &gps_conversion::gps_callback, this);
 
     if(align_pose_)
-        rot_c0_to_g0 << 0, 1, 0, 0, 0, -1, -1, 0, 0;
+        rot_imu2cam << 0, 1, 0, 0, 0, -1, -1, 0, 0;
     else
-        rot_c0_to_g0 << 0, -1, 0, 0, 0, -1, 1, 0, 0;
+        rot_imu2cam << 0, -1, 0, 0, 0, -1, 1, 0, 0;
+
+    gps_pub_ = nh_pub.advertise<geometry_msgs::PoseWithCovarianceStamped>(pose_pub_topic, 100);
 
     ROS_INFO("GPS pose conversion node initialized.");
 }
@@ -32,15 +35,15 @@ void external_info::gps_conversion::gps_callback(const geometry_msgs::PoseWithCo
 
     }
 
-    Eigen::Isometry3d gps_tf = Eigen::Isometry3d::Identity();
+    Eigen::Isometry3d pose2enu = Eigen::Isometry3d::Identity();
 
-    gps_tf.linear() = gps_frame_rot.toRotationMatrix();
+    pose2enu.linear() = gps_frame_rot.toRotationMatrix();
 
-    gps_tf.translation() = gps_frame_translation;
+    pose2enu.translation() = gps_frame_translation;
 
     Eigen::Isometry3d cam_frame_pose = Eigen::Isometry3d::Identity();
 
-    cam_frame_pose = bias * rot_c0_to_g0 * gps_frame_rot_0_inverse * gps_tf;
+    cam_frame_pose = rot_imu2cam * gps_frame_rot_0_inverse * pose2enu;  //pose(k) to enu, enu to pose(0), pose(0) to cam(0)
 
     if(frame_num_ == 0){
 
@@ -81,6 +84,6 @@ void external_info::gps_conversion::gps_callback(const geometry_msgs::PoseWithCo
 
     gps_pub_.publish(pose_msg);
 
-    br.sendTransform(tf::StampedTransform(transform_gps, ros::Time::now(), parent_frame, child_frame));
+    br.sendTransform(tf::StampedTransform(transform_gps, gps_pose.header.stamp, parent_frame, child_frame));
 
 }

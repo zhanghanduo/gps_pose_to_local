@@ -32,13 +32,11 @@ namespace external_info
 
         tf::TransformBroadcaster br;
 
-        Eigen::Quaterniond gps_frame_rot_0_inverse, bias, baseRgt;
+        Eigen::Quaterniond gps_frame_rot_0_inverse, bias;
 
-        Eigen::Vector3d baseTgt;
+        Eigen::Matrix3d rot_imu2cam;
 
-        Eigen::Matrix3d rot_c0_to_g0;
-
-        double theta, gamma1, off_x, off_y, off_z;
+        double off_x, off_y, off_z;
 
         ros::Publisher gps_pub_;
 
