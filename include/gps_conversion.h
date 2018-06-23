@@ -30,13 +30,13 @@ namespace external_info
     private:
         std::string timestring, parent_frame, child_frame;
 
-        tf::TransformBroadcaster br;
+        tf::TransformBroadcaster br, br_gps;
 
-        Eigen::Quaterniond gps_frame_rot_0_inverse, bias;
+        Eigen::Quaterniond gps_frame_rot_0_inverse, q_imu2cam;
 
-        Eigen::Matrix3d rot_imu2cam;
+        Eigen::Matrix3d rot_imu2cam, rot_cam2imu;
 
-        double off_x, off_y, off_z;
+        Eigen::Vector3d off_v, off_g;
 
         ros::Publisher gps_pub_;
 

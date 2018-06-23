@@ -1,5 +1,5 @@
 #include "include/gps_conversion.h"
-
+#include "tf_conversions/tf_eigen.h"
 
 external_info::gps_conversion::gps_conversion(ros::NodeHandle& nh_pub, ros::NodeHandle& nh_private)
 {
@@ -13,9 +13,12 @@ external_info::gps_conversion::gps_conversion(ros::NodeHandle& nh_pub, ros::Node
     gps_sub_ = nh_pub.subscribe(gps_sub_topic, 1000, &gps_conversion::gps_callback, this);
 
     if(align_pose_)
-        rot_imu2cam << 0, 1, 0, 0, 0, -1, -1, 0, 0;
+        rot_imu2cam << 1, 0, 0, 0, 0, 1, 0, -1, 0;
     else
         rot_imu2cam << 0, -1, 0, 0, 0, -1, 1, 0, 0;
+
+//    rot_cam2imu = rot_imu2cam.transpose();
+    q_imu2cam = rot_imu2cam;
 
     gps_pub_ = nh_pub.advertise<geometry_msgs::PoseWithCovarianceStamped>(pose_pub_topic, 100);
 
@@ -43,47 +46,50 @@ void external_info::gps_conversion::gps_callback(const geometry_msgs::PoseWithCo
 
     Eigen::Isometry3d cam_frame_pose = Eigen::Isometry3d::Identity();
 
-    cam_frame_pose = rot_imu2cam * gps_frame_rot_0_inverse * pose2enu;  //pose(k) to enu, enu to pose(0), pose(0) to cam(0)
+    cam_frame_pose = rot_imu2cam * gps_frame_rot_0_inverse * pose2enu ;  //pose(k) to enu, enu to pose(0), pose(0) to cam(0)
+
+    cam_frame_pose = pose2enu * gps_frame_rot_0_inverse * q_imu2cam;
+
+//            Eigen::Quaterniond cam_frame_rot = gps_frame_rot * gps_frame_rot_0_inverse * q_imu2cam;
 
     if(frame_num_ == 0){
 
-        Eigen::Vector3d off_v = cam_frame_pose.translation();
+        off_v = cam_frame_pose.translation();
+        off_g = pose2enu.translation();
 
-        off_x = off_v(0);
-        off_y = off_v(1);
-        off_z = off_v(2);
-
-        cam_frame_pose.translation() = Eigen::Vector3d(0, 0, 0);
+        pose2enu.translation() = cam_frame_pose.translation() = Eigen::Vector3d(0, 0, 0);
 
     }
     else{
-        Eigen::Vector3d t_v = cam_frame_pose.translation();
 
-        t_v(0) -=  off_x;
-        t_v(1) -=  off_y;
-        t_v(2) -=  off_z;
+        cam_frame_pose.translation() -= off_v;
 
-        cam_frame_pose.translation() = t_v;
+        pose2enu.translation() -= off_g;
     }
 
     frame_num_ ++;
 
-    Eigen::Quaterniond orientation(cam_frame_pose.matrix().topLeftCorner<3,3>());
+//    Eigen::Quaterniond orientation(cam_frame_pose.matrix().topLeftCorner<3,3>());
 
-    tf::Transform transform_gps;
+    tf::Transform transform_cam_frame, transform_gps_frame;
+//
+//    transform_cam_frame.setOrigin( tf::Vector3(cam_frame_pose.matrix()(0,3), cam_frame_pose.matrix()(1,3), cam_frame_pose.matrix()(2,3)));
+//    transform_cam_frame.setRotation( tf::Quaternion(orientation.x(), orientation.y(), orientation.z(), orientation.w()));
 
-    transform_gps.setOrigin( tf::Vector3(cam_frame_pose.matrix()(0,3), cam_frame_pose.matrix()(1,3), cam_frame_pose.matrix()(2,3)));
-    transform_gps.setRotation( tf::Quaternion(orientation.x(), orientation.y(), orientation.z(), orientation.w()));
+    tf::poseEigenToTF(cam_frame_pose, transform_cam_frame);
+    tf::poseEigenToTF(pose2enu, transform_gps_frame);
 
     geometry_msgs::PoseWithCovarianceStamped pose_msg;
 
     pose_msg.header.stamp = gps_pose.header.stamp;
     pose_msg.header.frame_id = parent_frame;
 
-    tf::poseTFToMsg(transform_gps, pose_msg.pose.pose);
+    tf::poseTFToMsg(transform_cam_frame, pose_msg.pose.pose);
 
     gps_pub_.publish(pose_msg);
 
-    br.sendTransform(tf::StampedTransform(transform_gps, gps_pose.header.stamp, parent_frame, child_frame));
+    br.sendTransform(tf::StampedTransform(transform_cam_frame, gps_pose.header.stamp, parent_frame, child_frame));
+
+    br_gps.sendTransform(tf::StampedTransform(transform_gps_frame, gps_pose.header.stamp, parent_frame, "gps"));
 
 }
