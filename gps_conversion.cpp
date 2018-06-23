@@ -17,7 +17,6 @@ external_info::gps_conversion::gps_conversion(ros::NodeHandle& nh_pub, ros::Node
     else
         rot_imu2cam << 0, -1, 0, 0, 0, -1, 1, 0, 0;
 
-//    rot_cam2imu = rot_imu2cam.transpose();
     q_imu2cam = rot_imu2cam;
 
     gps_pub_ = nh_pub.advertise<geometry_msgs::PoseWithCovarianceStamped>(pose_pub_topic, 100);
@@ -46,11 +45,9 @@ void external_info::gps_conversion::gps_callback(const geometry_msgs::PoseWithCo
 
     Eigen::Isometry3d cam_frame_pose = Eigen::Isometry3d::Identity();
 
-    cam_frame_pose = rot_imu2cam * gps_frame_rot_0_inverse * pose2enu ;  //pose(k) to enu, enu to pose(0), pose(0) to cam(0)
+//    cam_frame_pose = rot_imu2cam * gps_frame_rot_0_inverse * pose2enu ;  //pose(k) to enu, enu to pose(0), pose(0) to cam(0)
 
     cam_frame_pose = pose2enu * gps_frame_rot_0_inverse * q_imu2cam;
-
-//            Eigen::Quaterniond cam_frame_rot = gps_frame_rot * gps_frame_rot_0_inverse * q_imu2cam;
 
     if(frame_num_ == 0){
 

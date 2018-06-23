@@ -26,11 +26,12 @@ else()
     message(FATAL_ERROR "The compiler ${CMAKE_CXX_COMPILER} has no C++11 support. Please use a different C++ compiler.")
 endif()
 
+LIST(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake_modules)
 
 # Find Eigen3 Library
 # Since it is header-only and it won't be linked,
 # we have to explicitly add the include directories.
-find_package(Eigen3 3.2.10 REQUIRED)
+find_package(Eigen3 3.2 REQUIRED)
 include_directories(${EIGEN3_INCLUDE_DIR})
 
 ## Find catkin macros and libraries

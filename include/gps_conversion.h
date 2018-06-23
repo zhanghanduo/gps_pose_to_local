@@ -34,7 +34,7 @@ namespace external_info
 
         Eigen::Quaterniond gps_frame_rot_0_inverse, q_imu2cam;
 
-        Eigen::Matrix3d rot_imu2cam, rot_cam2imu;
+        Eigen::Matrix3d rot_imu2cam;
 
         Eigen::Vector3d off_v, off_g;
 
