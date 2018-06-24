@@ -1,7 +1,7 @@
 #include "include/gps_conversion.h"
 #include "tf_conversions/tf_eigen.h"
 
-external_info::gps_conversion::gps_conversion(ros::NodeHandle& nh_pub, ros::NodeHandle& nh_private)
+external_info::gps_conversion::gps_conversion(ros::NodeHandle& nh_pub, ros::NodeHandle& nh_private):frame_num_(0)
 {
     // Load launch file parameters
     nh_private.param<std::string>("gps_sub_topic", gps_sub_topic, "/gps/pose");
@@ -10,7 +10,7 @@ external_info::gps_conversion::gps_conversion(ros::NodeHandle& nh_pub, ros::Node
     nh_private.param<std::string>("child_frame", child_frame, "refined_gps");
     nh_private.param<bool>("align_positive", align_pose_, true);
 
-    gps_sub_ = nh_pub.subscribe(gps_sub_topic, 1000, &gps_conversion::gps_callback, this);
+    gps_sub_ = nh_pub.subscribe(gps_sub_topic, 100, &gps_conversion::gps_callback, this);
 
     if(align_pose_)
         rot_imu2cam << 1, 0, 0, 0, 0, 1, 0, -1, 0;
@@ -45,9 +45,15 @@ void external_info::gps_conversion::gps_callback(const geometry_msgs::PoseWithCo
 
     Eigen::Isometry3d cam_frame_pose = Eigen::Isometry3d::Identity();
 
-//    cam_frame_pose = rot_imu2cam * gps_frame_rot_0_inverse * pose2enu ;  //pose(k) to enu, enu to pose(0), pose(0) to cam(0)
+    cam_frame_pose = rot_imu2cam * gps_frame_rot_0_inverse * pose2enu ;  //pose(k) to enu, enu to pose(0), pose(0) to cam(0)
 
-    cam_frame_pose = pose2enu * gps_frame_rot_0_inverse * q_imu2cam;
+//    cam_frame_pose = pose2enu * gps_frame_rot_0_inverse * q_imu2cam;
+
+    Eigen::Quaterniond orientation(cam_frame_pose.matrix().topLeftCorner<3,3>());
+
+    orientation = orientation * q_imu2cam.inverse();
+
+    cam_frame_pose.linear() = orientation.toRotationMatrix();
 
     if(frame_num_ == 0){
 
@@ -65,8 +71,6 @@ void external_info::gps_conversion::gps_callback(const geometry_msgs::PoseWithCo
     }
 
     frame_num_ ++;
-
-//    Eigen::Quaterniond orientation(cam_frame_pose.matrix().topLeftCorner<3,3>());
 
     tf::Transform transform_cam_frame, transform_gps_frame;
 //
