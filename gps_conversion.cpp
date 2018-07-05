@@ -13,7 +13,7 @@ external_info::gps_conversion::gps_conversion(ros::NodeHandle& nh_pub, ros::Node
     gps_sub_ = nh_pub.subscribe(gps_sub_topic, 100, &gps_conversion::gps_callback, this);
 
     if(align_pose_)
-        rot_imu2cam << 1, 0, 0, 0, 0, 1, 0, -1, 0;
+        rot_imu2cam << 0, -1, 0, 0, 0, -1, 1, 0, 0;
     else
         rot_imu2cam << 0, -1, 0, 0, 0, -1, 1, 0, 0;
 
